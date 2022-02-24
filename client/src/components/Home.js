@@ -24,7 +24,7 @@ const Home = ({ user, logout }) => {
 
   const classes = useStyles();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
+  
   const addSearchedUsers = (users) => {
     const currentUsers = {};
 
@@ -62,10 +62,9 @@ const Home = ({ user, logout }) => {
     });
   };
 
-  const postMessage = (body) => {
+  const postMessage = async (body) => {
     try {
-      const data = saveMessage(body);
-
+      const data = await saveMessage(body); // saveMessage was returning a pending promise, added await
       if (!body.conversationId) {
         addNewConvo(body.recipientId, data.message);
       } else {
@@ -80,14 +79,16 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      conversations.forEach((convo) => {
+      //state was not updating, so I created a new array and then set the state with new array
+      const newConversations = conversations.map((convo) => {
         if (convo.otherUser.id === recipientId) {
           convo.messages.push(message);
           convo.latestMessageText = message.text;
           convo.id = message.conversationId;
         }
+        return convo;
       });
-      setConversations(conversations);
+      setConversations(newConversations);
     },
     [setConversations, conversations]
   );
@@ -105,14 +106,15 @@ const Home = ({ user, logout }) => {
         newConvo.latestMessageText = message.text;
         setConversations((prev) => [newConvo, ...prev]);
       }
-
-      conversations.forEach((convo) => {
+      //state was not updating, so I created a new array and then set the state with new array
+      const newConversations = conversations.map((convo) => {
         if (convo.id === message.conversationId) {
           convo.messages.push(message);
           convo.latestMessageText = message.text;
         }
+        return convo;
       });
-      setConversations(conversations);
+      setConversations(newConversations);
     },
     [setConversations, conversations]
   );
