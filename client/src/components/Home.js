@@ -64,7 +64,7 @@ const Home = ({ user, logout }) => {
 
   const postMessage = async (body) => {
     try {
-      const data = await saveMessage(body); // saveMessage was returning a pending promise, added await
+      const data = await saveMessage(body);
       if (!body.conversationId) {
         addNewConvo(body.recipientId, data.message);
       } else {
@@ -79,16 +79,16 @@ const Home = ({ user, logout }) => {
 
   const addNewConvo = useCallback(
     (recipientId, message) => {
-      //state was not updating, so I created a new array and then set the state with new array
-      const newConversations = conversations.map((convo) => {
-        if (convo.otherUser.id === recipientId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-          convo.id = message.conversationId;
-        }
-        return convo;
-      });
-      setConversations(newConversations);
+      setConversations((prev) =>
+        prev.map((convo) => {
+          if (convo.otherUser.id === recipientId) {
+            convo.messages.push(message);
+            convo.latestMessageText = message.text;
+            convo.id = message.conversationId;
+          }
+          return convo;
+        })
+      );
     },
     [setConversations, conversations]
   );
@@ -106,15 +106,15 @@ const Home = ({ user, logout }) => {
         newConvo.latestMessageText = message.text;
         setConversations((prev) => [newConvo, ...prev]);
       }
-      //state was not updating, so I created a new array and then set the state with new array
-      const newConversations = conversations.map((convo) => {
-        if (convo.id === message.conversationId) {
-          convo.messages.push(message);
-          convo.latestMessageText = message.text;
-        }
-        return convo;
-      });
-      setConversations(newConversations);
+      setConversations((prev) =>
+        prev.map((convo) => {
+          if (convo.id === message.conversationId) {
+            convo.messages.unshift(message);
+            convo.latestMessageText = message.text;
+          }
+          return convo;
+        })
+      );
     },
     [setConversations, conversations]
   );
@@ -186,6 +186,7 @@ const Home = ({ user, logout }) => {
       try {
         const { data } = await axios.get('/api/conversations');
         setConversations(data);
+        console.log(data)
       } catch (error) {
         console.error(error);
       }

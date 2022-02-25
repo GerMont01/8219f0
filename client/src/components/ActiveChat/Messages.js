@@ -8,15 +8,15 @@ const Messages = (props) => {
 
   return (
     <Box>
-      {messages.map((message) => {
-        const time = moment(message.createdAt).format('h:mm');
+      {messages.map((_,i,m) => {
+        const time = moment(m[m.length-1-i].createdAt).format('h:mm');
 
-        return message.senderId === userId ? (
-          <SenderBubble key={message.id} text={message.text} time={time} />
+        return m[m.length-1-i].senderId === userId ? (
+          <SenderBubble key={m[m.length-1-i].id} text={m[m.length-1-i].text} time={time} />
         ) : (
           <OtherUserBubble
-            key={message.id}
-            text={message.text}
+            key={m[m.length-1-i].id}
+            text={m[m.length-1-i].text}
             time={time}
             otherUser={otherUser}
           />
