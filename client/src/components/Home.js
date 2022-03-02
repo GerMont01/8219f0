@@ -21,6 +21,7 @@ const Home = ({ user, logout }) => {
 
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
+  const [activeConvId, setActiveConvId ] = useState(null);
 
   const classes = useStyles();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -38,7 +39,7 @@ const Home = ({ user, logout }) => {
       // only create a fake convo if we don't already have a convo with this user
       if (!currentUsers[user.id]) {
         let fakeConvo = { otherUser: user, messages: [] };
-        newState.push(fakeConvo);
+        newState.unshift(fakeConvo);
       }
     });
 
@@ -113,7 +114,7 @@ const Home = ({ user, logout }) => {
         prev.map((convo) => {
           if (convo.id === message.conversationId) {
             const convoCopy={...convo};
-            convoCopy.messages=[message, ...convoCopy.messages];
+            convoCopy.messages=[...convoCopy.messages, message];
             convoCopy.latestMessageText = message.text;
             return convoCopy;
           } else {
@@ -121,12 +122,41 @@ const Home = ({ user, logout }) => {
           }
         })
       );
+      // If receiver has this chat open then message with be read automatically
+      if (message.conversationId === activeConvId && message.senderId !== user.id) readMessages(message.conversationId)
     },
     [setConversations, conversations]
   );
 
-  const setActiveChat = (username) => {
+  const displayReadMessages = useCallback(
+    (conversation) => {
+      setConversations((prev) =>
+        prev.map((convo) => {
+          if (convo.id === conversation.id) {
+            const convoCopy={...convo};
+            convoCopy.messages=[...conversation.messages];
+            return convoCopy;
+          } else {
+            return convo;
+          }
+        })
+      )
+    },[setConversations, conversations]
+  )
+
+  const sendReadStatus = (data) => {
+    socket.emit('read-message', data);
+  }
+  const readMessages = async (conversationId) => {
+    const newConvo = await axios.post('/api/readmessages', {conversationId});
+    if (!newConvo) return; 
+    displayReadMessages(newConvo.data)
+    sendReadStatus(newConvo.data)
+  }
+
+  const setActiveChat = (username,conversationId) => {
     setActiveConversation(username);
+    setActiveConvId(conversationId);
   };
 
   const addOnlineUser = useCallback((id) => {
@@ -164,15 +194,16 @@ const Home = ({ user, logout }) => {
     socket.on('add-online-user', addOnlineUser);
     socket.on('remove-offline-user', removeOfflineUser);
     socket.on('new-message', addMessageToConversation);
-
+    socket.on('read-message', displayReadMessages);
     return () => {
       // before the component is destroyed
       // unbind all event handlers used in this component
       socket.off('add-online-user', addOnlineUser);
       socket.off('remove-offline-user', removeOfflineUser);
       socket.off('new-message', addMessageToConversation);
+      socket.off('read-message', displayReadMessages);
     };
-  }, [addMessageToConversation, addOnlineUser, removeOfflineUser, socket]);
+  }, [displayReadMessages, addMessageToConversation, addOnlineUser, removeOfflineUser, socket]);
 
   useEffect(() => {
     // when fetching, prevent redirect
@@ -218,12 +249,14 @@ const Home = ({ user, logout }) => {
           clearSearchedUsers={clearSearchedUsers}
           addSearchedUsers={addSearchedUsers}
           setActiveChat={setActiveChat}
+          readMessages={readMessages}
         />
         <ActiveChat
           activeConversation={activeConversation}
           conversations={conversations}
           user={user}
           postMessage={postMessage}
+          readMessages={readMessages}
         />
       </Grid>
     </>
