@@ -39,7 +39,7 @@ const Home = ({ user, logout }) => {
       // only create a fake convo if we don't already have a convo with this user
       if (!currentUsers[user.id]) {
         let fakeConvo = { otherUser: user, messages: [] };
-        newState.unshift(fakeConvo);
+        newState.push(fakeConvo);
       }
     });
 
@@ -87,6 +87,7 @@ const Home = ({ user, logout }) => {
             convoCopy.messages=[...convoCopy.messages, message];
             convoCopy.latestMessageText = message.text;
             convoCopy.id = message.conversationId;
+            setActiveConvId(message.conversationId);
             return convoCopy;
           } else {
             return convo;
@@ -109,19 +110,20 @@ const Home = ({ user, logout }) => {
         };
         newConvo.latestMessageText = message.text;
         setConversations((prev) => [newConvo, ...prev]);
+      } else {
+        setConversations((prev) =>
+          prev.map((convo) => {
+            if (convo.id === message.conversationId) {
+              const convoCopy={...convo};
+              convoCopy.messages=[...convoCopy.messages, message];
+              convoCopy.latestMessageText = message.text;
+              return convoCopy;
+            } else {
+              return convo;
+            }
+          })
+        );
       }
-      setConversations((prev) =>
-        prev.map((convo) => {
-          if (convo.id === message.conversationId) {
-            const convoCopy={...convo};
-            convoCopy.messages=[...convoCopy.messages, message];
-            convoCopy.latestMessageText = message.text;
-            return convoCopy;
-          } else {
-            return convo;
-          }
-        })
-      );
       // If receiver has this chat open then message with be read automatically
       if (message.conversationId === activeConvId && message.senderId !== user.id) readMessages(message.conversationId)
     },
@@ -148,16 +150,31 @@ const Home = ({ user, logout }) => {
     socket.emit('read-message', data);
   }
   const readMessages = async (conversationId) => {
-    const newConvo = await axios.post('/api/readmessages', {conversationId});
-    if (!newConvo) return; 
-    displayReadMessages(newConvo.data)
-    sendReadStatus(newConvo.data)
+    try {
+      const newConvo = await axios.put('/api/readmessages', {conversationId});
+      if (!newConvo) return; 
+      displayReadMessages(newConvo.data)
+      sendReadStatus(newConvo.data)
+    } catch (error){
+      console.error(error)
+    }
   }
 
   const setActiveChat = (username,conversationId) => {
     setActiveConversation(username);
     setActiveConvId(conversationId);
   };
+
+  const getUnRead = async (conversationId) =>{
+    try {
+      if (conversationId) {
+        return await axios.get(`/api/readmessages?conversationId=${conversationId}`)
+      }
+    }
+    catch (error) {
+        console.error(error)
+    }
+  }
 
   const addOnlineUser = useCallback((id) => {
     setConversations((prev) =>
@@ -250,13 +267,13 @@ const Home = ({ user, logout }) => {
           addSearchedUsers={addSearchedUsers}
           setActiveChat={setActiveChat}
           readMessages={readMessages}
+          getUnRead={getUnRead}
         />
         <ActiveChat
           activeConversation={activeConversation}
           conversations={conversations}
           user={user}
           postMessage={postMessage}
-          readMessages={readMessages}
         />
       </Grid>
     </>

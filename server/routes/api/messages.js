@@ -16,8 +16,7 @@ router.post("/", async (req, res, next) => {
       const message = await Message.create({ 
         senderId, 
         text, 
-        conversationId,
-        read: false 
+        conversationId
       });
       return res.json({ message, sender });
     }
@@ -40,8 +39,7 @@ router.post("/", async (req, res, next) => {
     const message = await Message.create({
       senderId,
       text,
-      conversationId: conversation.id,
-      read: false
+      conversationId: conversation.id
     });
     res.json({ message, sender });
   } catch (error) {
