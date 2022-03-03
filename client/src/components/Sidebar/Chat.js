@@ -37,8 +37,8 @@ const Chat = ({ conversation, setActiveChat, readMessages,getUnRead }) => {
   },[conversation])
 
   const handleClick = async (conversation) => {
-    await setActiveChat(conversation.otherUser.username, conversation.id);
     await readMessages(conversation.id)
+    await setActiveChat(conversation.otherUser.username, conversation.id);
   };
   
   return (
