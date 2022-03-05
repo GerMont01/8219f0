@@ -151,7 +151,7 @@ const Home = ({ user, logout }) => {
   }
   const readMessages = async (conversationId) => {
     try {
-      const newConvo = await axios.put('/api/readmessages', {conversationId});
+      const newConvo = await axios.put('/api/messages/read', {conversationId});
       if (!newConvo) return; 
       displayReadMessages(newConvo.data)
       sendReadStatus(newConvo.data)
@@ -168,7 +168,7 @@ const Home = ({ user, logout }) => {
   const getUnRead = async (conversationId) =>{
     try {
       if (conversationId) {
-        return await axios.get(`/api/readmessages?conversationId=${conversationId}`)
+        return await axios.get(`/api/messages/read?conversationId=${conversationId}`)
       }
     }
     catch (error) {
