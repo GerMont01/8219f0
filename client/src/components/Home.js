@@ -21,6 +21,7 @@ const Home = ({ user, logout }) => {
 
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
+  const [activeConvId, setActiveConvId ] = useState(null);
 
   const classes = useStyles();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -86,6 +87,7 @@ const Home = ({ user, logout }) => {
             convoCopy.messages=[...convoCopy.messages, message];
             convoCopy.latestMessageText = message.text;
             convoCopy.id = message.conversationId;
+            setActiveConvId(message.conversationId);
             return convoCopy;
           } else {
             return convo;
@@ -108,26 +110,71 @@ const Home = ({ user, logout }) => {
         };
         newConvo.latestMessageText = message.text;
         setConversations((prev) => [newConvo, ...prev]);
+      } else {
+        setConversations((prev) =>
+          prev.map((convo) => {
+            if (convo.id === message.conversationId) {
+              const convoCopy={...convo};
+              convoCopy.messages=[...convoCopy.messages, message];
+              convoCopy.latestMessageText = message.text;
+              return convoCopy;
+            } else {
+              return convo;
+            }
+          })
+        );
       }
+      // If receiver has this chat open then message with be read automatically
+      if (message.conversationId === activeConvId && message.senderId !== user.id) readMessages(message.conversationId)
+    },
+    [setConversations, conversations]
+  );
+
+  const displayReadMessages = useCallback(
+    (conversation) => {
       setConversations((prev) =>
         prev.map((convo) => {
-          if (convo.id === message.conversationId) {
+          if (convo.id === conversation.id) {
             const convoCopy={...convo};
-            convoCopy.messages=[message, ...convoCopy.messages];
-            convoCopy.latestMessageText = message.text;
+            convoCopy.messages=[...conversation.messages];
             return convoCopy;
           } else {
             return convo;
           }
         })
-      );
-    },
-    [setConversations, conversations]
-  );
+      )
+    },[setConversations, conversations]
+  )
 
-  const setActiveChat = (username) => {
+  const sendReadStatus = (data) => {
+    socket.emit('read-message', data);
+  }
+  const readMessages = async (conversationId) => {
+    try {
+      const newConvo = await axios.put('/api/messages/read', {conversationId});
+      if (!newConvo) return; 
+      displayReadMessages(newConvo.data)
+      sendReadStatus(newConvo.data)
+    } catch (error){
+      console.error(error)
+    }
+  }
+
+  const setActiveChat = (username,conversationId) => {
     setActiveConversation(username);
+    setActiveConvId(conversationId);
   };
+
+  const getUnRead = async (conversationId) =>{
+    try {
+      if (conversationId) {
+        return await axios.get(`/api/messages/read?conversationId=${conversationId}`)
+      }
+    }
+    catch (error) {
+        console.error(error)
+    }
+  }
 
   const addOnlineUser = useCallback((id) => {
     setConversations((prev) =>
@@ -164,15 +211,16 @@ const Home = ({ user, logout }) => {
     socket.on('add-online-user', addOnlineUser);
     socket.on('remove-offline-user', removeOfflineUser);
     socket.on('new-message', addMessageToConversation);
-
+    socket.on('read-message', displayReadMessages);
     return () => {
       // before the component is destroyed
       // unbind all event handlers used in this component
       socket.off('add-online-user', addOnlineUser);
       socket.off('remove-offline-user', removeOfflineUser);
       socket.off('new-message', addMessageToConversation);
+      socket.off('read-message', displayReadMessages);
     };
-  }, [addMessageToConversation, addOnlineUser, removeOfflineUser, socket]);
+  }, [displayReadMessages, addMessageToConversation, addOnlineUser, removeOfflineUser, socket]);
 
   useEffect(() => {
     // when fetching, prevent redirect
@@ -218,6 +266,8 @@ const Home = ({ user, logout }) => {
           clearSearchedUsers={clearSearchedUsers}
           addSearchedUsers={addSearchedUsers}
           setActiveChat={setActiveChat}
+          readMessages={readMessages}
+          getUnRead={getUnRead}
         />
         <ActiveChat
           activeConversation={activeConversation}
