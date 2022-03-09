@@ -11,6 +11,8 @@ router.get("/", async (req, res, next) => {
       return res.sendStatus(401);
     }
     const userId = req.user.id;
+
+    // We would need to change the query to select all conversations that contains the user and include all Users
     const conversations = await Conversation.findAll({
       where: {
         [Op.or]: {
