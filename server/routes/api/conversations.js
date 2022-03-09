@@ -54,7 +54,6 @@ router.get("/", async (req, res, next) => {
       const convoJSON = convo.toJSON();
 
       // set a property "otherUser" so that frontend will have easier access
-      // We would need to change this part include all other users and make the changes to FE where the otherUser is used.
       if (convoJSON.user1) {
         convoJSON.otherUser = convoJSON.user1;
         delete convoJSON.user1;
